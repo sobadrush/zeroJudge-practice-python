@@ -6,10 +6,10 @@ print(f"rods = {rods}")
 
 sum_of_fixed_rod = 0
 for i in range(n):
-  if i == 0:
+  if i == 0 and rods[i] == 0: # 左側
     sum_of_fixed_rod += rods[i + 1]
     continue
-  if i == (n - 1):
+  if i == (n - 1) and rods[i] == 0: # 右側
     sum_of_fixed_rod += rods[i - 1]
     continue
   if rods[i] == 0:
