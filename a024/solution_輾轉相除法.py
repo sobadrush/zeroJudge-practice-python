@@ -16,13 +16,13 @@ while True:
     continue
   
   gcd = 1
-  while aa != 0:
+  while True:
     tmp = bb % aa
     if tmp == 0:
+      gcd = aa
       break
     bb = aa
     aa = tmp
     
-  gcd = aa
   print(f"最大公因數 = {gcd}")
   break
