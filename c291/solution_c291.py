@@ -7,7 +7,7 @@ for i in range(n):
     if i not in visited:
         groupNumber += 1 # 小團體 +1
         cur = i
-        while cur not in visited:
+        while cur not in visited: # 檢查直到 cur 走訪的值已存在 visited 中，即代表已完成朋友圈
             visited.add(cur)
             cur = friends[cur]
 
