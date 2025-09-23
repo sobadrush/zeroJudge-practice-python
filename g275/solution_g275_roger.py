@@ -37,14 +37,14 @@ for i in range(0, len(seven_word_poem), 2):
   pair_sentence = [ seven_word_poem[i], seven_word_poem[i + 1] ]
   
   for sentence in pair_sentence:
-    if (not checkRuleA(sentence)): # 檢查規則 A
+    if (not checkRuleA(sentence)): # 檢查規則 A (A: 二四不同二六同：每一句第二、四個字必須不同平仄，而第二、六個字必須相同平仄)
       violation_rule.add("A")
       break
   
-  if (not checkRuleB(pair_sentence)): # 檢查規則 B
+  if (not checkRuleB(pair_sentence)): # 檢查規則 B (A: 二四不同二六同：每一句第二、四個字必須不同平仄，而第二、六個字必須相同平仄)
     violation_rule.add("B")
   
-  if (not checkRuleC(pair_sentence)): # 檢查規則 C
+  if (not checkRuleC(pair_sentence)): # 檢查規則 C (上下相對：第一、二句的第二、四、六個字平仄必須不同)
     violation_rule.add("C")
   
   if violation_rule: # 不是空的 set, 才存
