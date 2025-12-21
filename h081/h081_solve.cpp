@@ -6,31 +6,43 @@ using namespace std;
 // D: Difference 表示預期的獲利(價差)
 int main() {
   int n, D;
-  cout << "請輸入正整數 n , D" << endl;
   cin >> n >> D;
 
   // 輸入跳動的股價
-  int ticks[5];
-  for(int i = 0; i < n ; i++) {
+  if (n <= 0) {
+    cout << 0 << endl;
+    return 0;
+  }
+
+  // 用動態陣列（array）避免固定長度導致越界
+  int* ticks = new int[n];
+  for (int i = 0; i < n; i++) {
     cin >> ticks[i];
   }
 
   int profit = 0; // 獲利
-  int my_stock = ticks[0]; // 初次購買的股價
-  int expect_price = my_stock + D; // 預期獲利
+  bool holding = true; // 一開始用 ticks[0] 買入
+  int buy_price = ticks[0];
+  int expect_price = buy_price + D; // 目標賣出價
   int last_sold = 0; // 前一次賣出的價格
-  for(int i = 1; i < n; i++) {
-    if (my_stock > 0) { // 手中有股票
-      if(ticks[i] > expect_price) {
-        my_stock = 0; // 表示未持有股票
-        profit += ticks[i] - my_stock;
+
+  for (int i = 1; i < n; i++) {
+    if (holding) { // 手中有股票
+      if (ticks[i] >= expect_price) {
+        profit += (ticks[i] - buy_price);
+        last_sold = ticks[i];
+        holding = false;
       }
     } else { // 未持有股票
-      if(ticks[i] <= (last_sold - D)) {
-        my_stock = ticks[i]; // 買入股票
+      if (ticks[i] <= (last_sold - D)) {
+        buy_price = ticks[i];
+        expect_price = buy_price + D;
+        holding = true;
       }
     }
   }
 
+  delete[] ticks;
+  cout << profit << endl;
   return 0;
 }
