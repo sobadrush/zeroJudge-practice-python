@@ -9,7 +9,8 @@
 .LSOverride
 
 # Icon must end with two \r
-Icon
+Icon
+
 
 # Thumbnails
 ._*
@@ -35,3 +36,25 @@ Temporary Items
 *.icloud
 
 # End of https://www.toptal.com/developers/gitignore/api/macos
+
+# C/C++ build artifacts (local builds)
+**/*.dSYM/
+*.o
+*.obj
+**/a.out
+
+# Compiled executables (this repo's naming conventions)
+# Many solutions compile to an extensionless binary with the same base name.
+**/solution_*
+!**/solution_*.py
+!**/solution_*.cpp
+!**/solution_*.c
+!**/solution_*.h
+!**/solution_*.hpp
+
+**/*_solve
+!**/*_solve.py
+!**/*_solve.cpp
+!**/*_solve.c
+!**/*_solve.h
+!**/*_solve.hpp
