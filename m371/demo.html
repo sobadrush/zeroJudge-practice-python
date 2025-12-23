@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>C++ 消除演算法 - 逐行執行演示</title>
+
+        <!-- 引入 React 和 ReactDOM -->
+        <script
+            src="https://unpkg.com/react@18/umd/react.development.js"
+            crossorigin
+        ></script>
+        <script
+            src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"
+            crossorigin
+        ></script>
+
+        <!-- 引入 Babel 用於解析 JSX -->
+        <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+        <!-- 引入 Tailwind CSS -->
+        <script src="https://cdn.tailwindcss.com"></script>
+
+        <style>
+            /* 自定義滾動條樣式 */
+            .scrollbar-thin::-webkit-scrollbar {
+                width: 6px;
+            }
+            .scrollbar-thin::-webkit-scrollbar-track {
+                background: #1e293b;
+            }
+            .scrollbar-thin::-webkit-scrollbar-thumb {
+                background-color: #475569;
+                border-radius: 20px;
+            }
+        </style>
+    </head>
+    <body class="bg-slate-50">
+        <div id="root"></div>
+
+        <script type="text/babel">
+            const { useState, useEffect, useRef } = React
+
+            // --- 圖示組件 ---
+            const IconPlay = ({ size = 20, className = '' }) => (
+                <svg
+                    width={size}
+                    height={size}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className={className}
+                >
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+            )
+            const IconPause = ({ size = 20, className = '' }) => (
+                <svg
+                    width={size}
+                    height={size}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className={className}
+                >
+                    <rect x="6" y="4" width="4" height="16"></rect>
+                    <rect x="14" y="4" width="4" height="16"></rect>
+                </svg>
+            )
+            const IconStepForward = ({ size = 20, className = '' }) => (
+                <svg
+                    width={size}
+                    height={size}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className={className}
+                >
+                    <polygon points="5 4 15 12 5 20 5 4"></polygon>
+                    <line x1="19" y1="5" x2="19" y2="19"></line>
+                </svg>
+            )
+            const IconRotateCcw = ({ size = 20, className = '' }) => (
+                <svg
+                    width={size}
+                    height={size}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className={className}
+                >
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                    <path d="M3 3v5h5"></path>
+                </svg>
+            )
+            const IconCode = ({ size = 20, className = '' }) => (
+                <svg
+                    width={size}
+                    height={size}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className={className}
+                >
+                    <polyline points="16 18 22 12 16 6"></polyline>
+                    <polyline points="8 6 2 12 8 18"></polyline>
+                </svg>
+            )
+            const IconFileText = ({ size = 20, className = '' }) => (
+                <svg
+                    width={size}
+                    height={size}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className={className}
+                >
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+            )
+
+            // --- 小組件：變數顯示卡片 ---
+            const VariableCard = ({ label, value, type = 'number' }) => {
+                let colorClass = 'text-slate-700'
+                let bgClass = 'bg-slate-50 border-slate-200'
+
+                if (type === 'bool') {
+                    if (value === 'true') {
+                        colorClass = 'text-green-600'
+                        bgClass = 'bg-green-50 border-green-200'
+                    } else {
+                        colorClass = 'text-slate-400'
+                    }
+                } else if (value !== '-' && value !== -1) {
+                    colorClass = 'text-blue-600'
+                    bgClass = 'bg-blue-50 border-blue-200'
+                }
+
+                return (
+                    <div
+                        className={`flex flex-col items-center justify-center p-2 rounded-lg border ${bgClass} min-w-[3.5rem] shadow-sm transition-colors duration-300`}
+                    >
+                        <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">
+                            {label}
+                        </span>
+                        <span
+                            className={`font-mono text-sm font-bold ${colorClass}`}
+                        >
+                            {value}
+                        </span>
+                    </div>
+                )
+            }
+
+            const INITIAL_GRID = [
+                [0, 2, 3, 8, 0, 2],
+                [1, 1, 4, 4, 5, 7],
+                [5, 6, 3, 8, 6, 7],
+            ]
+
+            const ROWS = 3
+            const COLS = 6
+
+            const CODE_LINES = [
+                /* 0 */ 'while (changed) {',
+                /* 1 */ '    changed = false;',
+                /* 2 */ '    for (int i = 0; i < n; i++) {',
+                /* 3 */ '        for (int j = 0; j < m; j++) {',
+                /* 4 */ '            // 若是空位則跳過',
+                /* 5 */ '            if (ind[i][j] == -1) continue;',
+                /* 6 */ '            int target = ind[i][j];',
+                /* 7 */ '            bool found = false;',
+                /* 8 */ '            // 1. 向下檢查 (垂直)',
+                /* 9 */ '            for (int k = i + 1; k < n; k++) {',
+                /* 10 */ '                if (ind[k][j] == -1) continue;',
+                /* 11 */ '                if (ind[k][j] == target) {',
+                /* 12 */ '                    score += target;',
+                /* 13 */ '                    ind[i][j] = -1; ind[k][j] = -1;',
+                /* 14 */ '                    changed = true; found = true;',
+                /* 15 */ '                }',
+                /* 16 */ '                break; // 撞到數字或消除後停止',
+                /* 17 */ '            }',
+                /* 18 */ '            // 2. 向右檢查 (水平)',
+                /* 19 */ '            if (!found) {',
+                /* 20 */ '                for (int k = j + 1; k < m; k++) {',
+                /* 21 */ '                    if (ind[i][k] == -1) continue;',
+                /* 22 */ '                    if (ind[i][k] == target) {',
+                /* 23 */ '                        score += target;',
+                /* 24 */ '                        ind[i][j] = -1; ind[i][k] = -1;',
+                /* 25 */ '                        changed = true; found = true;',
+                /* 26 */ '                    }',
+                /* 27 */ '                    break; // 撞到數字或消除後停止',
+                /* 28 */ '                }',
+                /* 29 */ '            }',
+                /* 30 */ '        }',
+                /* 31 */ '    }',
+                /* 32 */ '}',
+            ]
+
+            // --- 主程式元件 ---
+            const LogicDemo = () => {
+                // --- 核心狀態 ---
+                const [grid, setGrid] = useState(
+                    JSON.parse(JSON.stringify(INITIAL_GRID))
+                )
+                const [score, setScore] = useState(0)
+
+                // 模擬器狀態
+                const [activeLine, setActiveLine] = useState(0)
+                const [prevLine, setPrevLine] = useState(-1)
+                const [isFinished, setIsFinished] = useState(false)
+
+                const [vars, setVars] = useState({
+                    i: 0,
+                    j: 0,
+                    vk: -1,
+                    hk: -1,
+                    target: 0,
+                    found: false,
+                    // 這裡的 loopChanged 對應程式中的 changed 變數
+                    loopChanged: true,
+                })
+
+                // 播放控制
+                const [isPlaying, setIsPlaying] = useState(false)
+                const [speed, setSpeed] = useState(500)
+                const [log, setLog] = useState([
+                    '準備就緒，點擊「下一步」開始逐行執行。',
+                ])
+
+                const addLog = (msg) => {
+                    setLog((prev) => [msg, ...prev].slice(0, 50))
+                }
+
+                const resetGame = () => {
+                    setGrid(JSON.parse(JSON.stringify(INITIAL_GRID)))
+                    setScore(0)
+                    setActiveLine(0)
+                    setPrevLine(-1)
+                    setIsFinished(false)
+                    setVars({
+                        i: 0,
+                        j: 0,
+                        vk: -1,
+                        hk: -1,
+                        target: 0,
+                        found: false,
+                        loopChanged: true, // 初始必須為 true 才能進入 while
+                    })
+                    setIsPlaying(false)
+                    setLog(['重置完成。'])
+                }
+
+                // 輔助函式：判斷當前要顯示哪個 k
+                const getDisplayK = () => {
+                    // 垂直掃描區間
+                    if (activeLine >= 9 && activeLine <= 17) return vars.vk
+                    // 水平掃描區間
+                    if (activeLine >= 20 && activeLine <= 28) return vars.hk
+                    return '-'
+                }
+
+                // --- 核心解釋器邏輯 (Step Function) ---
+                const step = () => {
+                    if (isFinished) {
+                        setIsPlaying(false)
+                        return
+                    }
+
+                    let nextLine = activeLine + 1
+                    let nextVars = { ...vars }
+                    let nextGrid = [...grid.map((row) => [...row])]
+                    let nextScore = score
+                    let logMsg = ''
+
+                    switch (activeLine) {
+                        case 0: // while (changed)
+                            if (nextVars.loopChanged) {
+                                logMsg = `🔄 檢查 changed 為 true，進入迴圈`
+                                nextLine = 1
+                            } else {
+                                logMsg = `🏁 檢查 changed 為 false，程式結束`
+                                setIsFinished(true)
+                                nextLine = -1
+                            }
+                            break
+
+                        case 1: // changed = false;
+                            nextVars.loopChanged = false
+                            logMsg = `⚙️ 重置 changed = false，開始本輪掃描`
+                            nextLine = 2
+                            break
+
+                        case 2: // for (int i = 0; i < n; i++)
+                            if (prevLine === 31) {
+                                // 來自 i loop 結尾
+                                nextVars.i++
+                                logMsg = `🔄 i 增加為 ${nextVars.i}`
+                            } else {
+                                // 來自上方 (Line 1)
+                                nextVars.i = 0
+                                logMsg = `➡️ 進入 i 迴圈，i = 0`
+                            }
+
+                            if (nextVars.i < ROWS) {
+                                nextLine = 3
+                            } else {
+                                nextLine = 32 // 跳到 while 結尾
+                            }
+                            break
+
+                        case 3: // for (int j = 0; j < m; j++)
+                            if (prevLine === 30) {
+                                nextVars.j++
+                                logMsg = `🔄 j 增加為 ${nextVars.j}`
+                            } else {
+                                nextVars.j = 0
+                                logMsg = `➡️ 進入 j 迴圈，j = 0`
+                            }
+
+                            if (nextVars.j < COLS) {
+                                nextLine = 4 // 進入迴圈體
+                            } else {
+                                nextLine = 31 // j loop 結束
+                            }
+                            break
+
+                        case 4: // comment
+                            nextLine = 5
+                            break
+
+                        case 5: // if (ind[i][j] == -1) continue;
+                            if (grid[vars.i][vars.j] === -1) {
+                                logMsg = `⚪ (${vars.i}, ${vars.j}) 是空位，continue`
+                                nextLine = 30 // 跳到 j loop 結尾
+                            } else {
+                                nextLine = 6
+                            }
+                            break
+
+                        case 6: // int target = ind[i][j];
+                            nextVars.target = grid[vars.i][vars.j]
+                            logMsg = `🎯 設定 target = ${nextVars.target}`
+                            nextLine = 7
+                            break
+
+                        case 7: // bool found = false;
+                            nextVars.found = false
+                            nextLine = 8
+                            break
+
+                        case 8: // comment
+                            nextLine = 9
+                            break
+
+                        case 9: // for (int k = i + 1; k < n; k++)
+                            if (prevLine === 17) {
+                                nextVars.vk++
+                            } else {
+                                nextVars.vk = vars.i + 1
+                                logMsg = `⬇️ 開始向下檢查，k = ${nextVars.vk}`
+                            }
+
+                            if (nextVars.vk < ROWS) {
+                                nextLine = 10
+                            } else {
+                                nextLine = 18 // k loop 結束
+                            }
+                            break
+
+                        case 10: // if (ind[k][j] == -1) continue;
+                            if (grid[vars.vk][vars.j] === -1) {
+                                logMsg = `⬇️ (${vars.vk}, ${vars.j}) 是空位，跳過`
+                                nextLine = 17
+                            } else {
+                                nextLine = 11
+                            }
+                            break
+
+                        case 11: // if (ind[k][j] == target)
+                            if (grid[vars.vk][vars.j] === vars.target) {
+                                logMsg = `✅ 找到配對！(${vars.vk}, ${vars.j}) == ${vars.target}`
+                                nextLine = 12
+                            } else {
+                                logMsg = `🚫 值為 ${grid[vars.vk][vars.j]} (≠${
+                                    vars.target
+                                })，被阻擋`
+                                nextLine = 16
+                            }
+                            break
+
+                        case 12: // score += target;
+                            nextScore += vars.target
+                            logMsg = `💥 消除！得分 +${vars.target}`
+                            nextLine = 13
+                            break
+
+                        case 13: // ind[i][j] = -1; ind[k][j] = -1;
+                            nextGrid[vars.i][vars.j] = -1
+                            nextGrid[vars.vk][vars.j] = -1
+                            nextLine = 14
+                            break
+
+                        case 14: // changed = true; found = true;
+                            nextVars.loopChanged = true
+                            nextVars.found = true
+                            nextLine = 15
+                            break
+
+                        case 15: // }
+                            nextLine = 16
+                            break
+
+                        case 16: // break;
+                            logMsg = `⏹️ 中斷向下搜尋 (break)`
+                            nextLine = 18
+                            break
+
+                        case 17: // k loop end brace
+                            nextLine = 9
+                            break
+
+                        case 18: // comment 2
+                            nextLine = 19
+                            break
+
+                        case 19: // if (!found)
+                            if (!vars.found) {
+                                nextLine = 20
+                            } else {
+                                logMsg = `⏭️ 已在垂直方向消除，跳過水平檢查`
+                                nextLine = 30 // 跳到 j loop 結尾
+                            }
+                            break
+
+                        case 20: // for (int k = j + 1; k < m; k++)
+                            if (prevLine === 28) {
+                                nextVars.hk++
+                            } else {
+                                nextVars.hk = vars.j + 1
+                                logMsg = `➡️ 開始向右檢查，k = ${nextVars.hk}`
+                            }
+
+                            if (nextVars.hk < COLS) {
+                                nextLine = 21
+                            } else {
+                                nextLine = 29 // k loop 結束
+                            }
+                            break
+
+                        case 21: // if (ind[i][k] == -1) continue
+                            if (grid[vars.i][vars.hk] === -1) {
+                                logMsg = `➡️ (${vars.i}, ${vars.hk}) 是空位，跳過`
+                                nextLine = 28
+                            } else {
+                                nextLine = 22
+                            }
+                            break
+
+                        case 22: // if (ind[i][k] == target)
+                            if (grid[vars.i][vars.hk] === vars.target) {
+                                logMsg = `✅ 找到配對！(${vars.i}, ${vars.hk}) == ${vars.target}`
+                                nextLine = 23
+                            } else {
+                                logMsg = `🚫 值為 ${grid[vars.i][vars.hk]} (≠${
+                                    vars.target
+                                })，被阻擋`
+                                nextLine = 27
+                            }
+                            break
+
+                        case 23: // score...
+                            nextScore += vars.target
+                            logMsg = `💥 消除！得分 +${vars.target}`
+                            nextLine = 24
+                            break
+
+                        case 24: // ind...
+                            nextGrid[vars.i][vars.j] = -1
+                            nextGrid[vars.i][vars.hk] = -1
+                            nextLine = 25
+                            break
+
+                        case 25: // changed... found...
+                            nextVars.loopChanged = true
+                            nextVars.found = true
+                            nextLine = 26
+                            break
+
+                        case 26: // }
+                            nextLine = 27
+                            break
+
+                        case 27: // break
+                            logMsg = `⏹️ 中斷向右搜尋 (break)`
+                            nextLine = 30 // 跳到 j loop 結尾 (應跳出 k 迴圈 -> 29 -> 30)
+                            // 修正：break 應該跳出 inner k loop (來到 29)，然後 29 是 if (!found) 的結尾，再到 30
+                            nextLine = 30 // 簡化邏輯：break k loop -> finish horizontal check -> next j
+                            break
+
+                        case 28: // k loop end brace
+                            nextLine = 20
+                            break
+
+                        case 29: // if (!found) brace
+                            nextLine = 30
+                            break
+
+                        case 30: // j loop end brace
+                            nextLine = 3
+                            break
+
+                        case 31: // i loop end brace
+                            nextLine = 2
+                            break
+
+                        case 32: // while loop end brace
+                            nextLine = 0 // 回到 while 檢查 changed
+                            break
+
+                        default:
+                            nextLine = 0
+                    }
+
+                    if (
+                        nextLine < CODE_LINES.length &&
+                        (CODE_LINES[nextLine].trim().startsWith('//') ||
+                            CODE_LINES[nextLine].trim() === '')
+                    ) {
+                        // 自然跳過
+                    }
+
+                    if (logMsg) addLog(logMsg)
+                    setPrevLine(activeLine)
+                    setActiveLine(nextLine)
+                    setVars(nextVars)
+                    setGrid(nextGrid)
+                    setScore(nextScore)
+                }
+
+                useEffect(() => {
+                    let timer
+                    if (isPlaying && !isFinished) {
+                        timer = setTimeout(step, speed)
+                    }
+                    return () => clearTimeout(timer)
+                }, [isPlaying, isFinished, speed, activeLine, vars, grid])
+
+                const getLineVariables = (lineIdx) => {
+                    if (activeLine !== lineIdx) return null
+
+                    switch (lineIdx) {
+                        case 0:
+                            return `changed is ${vars.loopChanged}`
+                        case 1:
+                            return `changed = false`
+                        case 2:
+                            return `i = ${vars.i}, n = ${ROWS}`
+                        case 3:
+                            return `j = ${vars.j}, m = ${COLS}`
+                        case 5:
+                            return `ind[${vars.i}][${vars.j}] = ${
+                                grid[vars.i][vars.j]
+                            }`
+                        case 6:
+                            return `target = ${vars.target}`
+                        case 7:
+                            return `found = ${vars.found}`
+
+                        case 10:
+                            return `ind[${vars.vk}][${vars.j}]`
+                        case 11:
+                            return `ind[${vars.vk}][${vars.j}] == ${vars.target}?`
+                        case 14:
+                            return `changed=true`
+
+                        case 19:
+                            return `!found is ${!vars.found}`
+
+                        case 21:
+                            return `ind[${vars.i}][${vars.hk}]`
+                        case 22:
+                            return `ind[${vars.i}][${vars.hk}] == ${vars.target}?`
+                        case 25:
+                            return `changed=true`
+                        default:
+                            return null
+                    }
+                }
+
+                const renderCell = (r, c) => {
+                    const val = grid[r][c]
+
+                    // i,j 游標：在內層迴圈 j 中時才顯示
+                    let isCurrent =
+                        vars.i === r &&
+                        vars.j === c &&
+                        activeLine >= 3 &&
+                        activeLine < 31
+
+                    let isScanning = false
+                    // 垂直掃描區間 (Line 9-17)
+                    if (activeLine > 9 && activeLine <= 17) {
+                        if (vars.vk === r && vars.j === c) isScanning = true
+                    }
+                    // 水平掃描區間 (Line 20-28)
+                    if (activeLine > 20 && activeLine <= 28) {
+                        if (vars.i === r && vars.hk === c) isScanning = true
+                    }
+
+                    let bgClass = 'bg-gray-100'
+                    let textClass = 'text-gray-800'
+                    let borderClass = 'border-gray-300'
+
+                    if (val === -1) {
+                        bgClass = 'bg-gray-50 opacity-30'
+                        textClass = 'text-transparent'
+                        borderClass = 'border-gray-100'
+                    } else {
+                        if (isCurrent) {
+                            bgClass = 'bg-blue-500 shadow-md z-10'
+                            textClass = 'text-white font-bold'
+                            borderClass = 'border-blue-700'
+                        }
+                        if (isScanning) {
+                            if (val === vars.target) {
+                                bgClass = 'bg-green-500 scale-110'
+                                textClass = 'text-white'
+                                borderClass = 'border-green-600'
+                            } else {
+                                bgClass = 'bg-yellow-100'
+                                borderClass = 'border-yellow-500 border-dashed'
+                                textClass = 'text-yellow-800'
+                            }
+                        }
+                    }
+
+                    return (
+                        <div
+                            key={`${r}-${c}`}
+                            className={`
+                  w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center text-lg sm:text-2xl rounded-lg border-2 
+                  ${bgClass} ${textClass} ${borderClass} transition-all duration-200 relative
+                `}
+                        >
+                            {val !== -1 ? val : ''}
+                            {isCurrent && val !== -1 && (
+                                <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-blue-600 text-xs font-bold bg-white px-1 rounded shadow-sm">
+                                    i,j
+                                </div>
+                            )}
+                            {isScanning && val !== -1 && (
+                                <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 text-yellow-600 text-xs font-bold bg-white px-1 rounded shadow-sm">
+                                    k
+                                </div>
+                            )}
+                        </div>
+                    )
+                }
+
+                return (
+                    <div className="min-h-screen bg-slate-50 p-4 font-sans text-slate-800 flex flex-col items-center">
+                        <header className="mb-6 text-center">
+                            <h1 className="text-3xl font-bold text-slate-800 mb-2">
+                                C++ 消除演算法 - 逐行執行演示
+                            </h1>
+                            <p className="text-slate-600">
+                                目標總分:{' '}
+                                <span className="font-mono bg-slate-200 px-2 rounded">
+                                    29
+                                </span>{' '}
+                                | 當前得分:{' '}
+                                <span className="font-mono font-bold text-green-600 text-2xl ml-2">
+                                    {score}
+                                </span>
+                            </p>
+                        </header>
+
+                        <div className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* 左側：網格與控制區 */}
+                            <div className="flex flex-col gap-6">
+                                <div className="bg-white p-6 rounded-xl shadow-lg border border-slate-200 flex flex-col items-center min-h-[400px]">
+                                    <div className="grid grid-cols-6 gap-2 sm:gap-3 mb-8 mt-4">
+                                        {grid.map((row, r) =>
+                                            row.map((_, c) => renderCell(r, c))
+                                        )}
+                                    </div>
+
+                                    {/* 變數儀表板 */}
+                                    <div className="flex gap-2 mb-6 w-full px-4 justify-center">
+                                        <VariableCard
+                                            label="i"
+                                            value={vars.i}
+                                        />
+                                        <VariableCard
+                                            label="j"
+                                            value={vars.j}
+                                        />
+                                        <VariableCard
+                                            label="k"
+                                            value={getDisplayK()}
+                                        />
+                                        <VariableCard
+                                            label="found"
+                                            value={String(vars.found)}
+                                            type="bool"
+                                        />
+                                        <VariableCard
+                                            label="changed"
+                                            value={String(vars.loopChanged)}
+                                            type="bool"
+                                        />
+                                    </div>
+
+                                    {/* 控制按鈕 */}
+                                    <div className="flex flex-wrap gap-3 justify-center w-full">
+                                        <button
+                                            onClick={step}
+                                            disabled={isPlaying || isFinished}
+                                            className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed shadow-md active:scale-95 transition font-medium"
+                                        >
+                                            <IconStepForward size={20} />{' '}
+                                            單步執行
+                                        </button>
+
+                                        <button
+                                            onClick={() =>
+                                                setIsPlaying(!isPlaying)
+                                            }
+                                            disabled={isFinished}
+                                            className={`flex items-center gap-2 px-6 py-3 rounded-lg text-white shadow-md active:scale-95 transition font-medium ${
+                                                isPlaying
+                                                    ? 'bg-amber-500 hover:bg-amber-600'
+                                                    : 'bg-green-600 hover:bg-green-700'
+                                            }`}
+                                        >
+                                            {isPlaying ? (
+                                                <>
+                                                    <IconPause size={20} /> 暫停
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <IconPlay size={20} />{' '}
+                                                    自動播放
+                                                </>
+                                            )}
+                                        </button>
+
+                                        <button
+                                            onClick={resetGame}
+                                            className="flex items-center gap-2 px-6 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg shadow-md active:scale-95 transition font-medium"
+                                        >
+                                            <IconRotateCcw size={20} /> 重置
+                                        </button>
+                                    </div>
+
+                                    <div className="mt-6 flex items-center gap-2 text-sm text-slate-500 w-full max-w-xs">
+                                        <span>速度:</span>
+                                        <input
+                                            type="range"
+                                            min="50"
+                                            max="1000"
+                                            step="50"
+                                            value={1050 - speed}
+                                            onChange={(e) =>
+                                                setSpeed(
+                                                    1050 -
+                                                        Number(e.target.value)
+                                                )
+                                            }
+                                            className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* 日誌區 */}
+                                <div className="bg-slate-900 text-slate-200 p-4 rounded-xl shadow-lg border border-slate-700 h-64 overflow-hidden flex flex-col">
+                                    <div className="pb-2 border-b border-slate-700 mb-2 flex items-center gap-2 text-sm font-semibold">
+                                        <IconFileText size={16} /> 執行紀錄
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto space-y-1 font-mono text-xs sm:text-sm pr-2 scrollbar-thin">
+                                        {log.map((entry, idx) => (
+                                            <div
+                                                key={idx}
+                                                className={`p-1 px-2 rounded border-l-2 ${
+                                                    entry.includes('消除')
+                                                        ? 'bg-green-900/30 border-green-500 text-green-200'
+                                                        : entry.includes(
+                                                              '檢查 changed 為 false'
+                                                          )
+                                                        ? 'bg-blue-900/30 border-blue-500 text-blue-200'
+                                                        : 'hover:bg-slate-800/50 border-slate-600 text-slate-400'
+                                                }`}
+                                            >
+                                                {entry}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 右側：程式碼顯示區 */}
+                            <div className="bg-[#1e1e1e] rounded-xl shadow-2xl border border-slate-700 flex flex-col overflow-hidden h-full min-h-[600px]">
+                                <div className="flex items-center justify-between px-4 py-3 bg-[#252526] border-b border-[#333]">
+                                    <div className="flex items-center gap-2 text-slate-300 font-medium">
+                                        <IconCode
+                                            size={18}
+                                            className="text-blue-400"
+                                        />{' '}
+                                        main.cpp
+                                    </div>
+                                    <div className="text-xs text-slate-500">
+                                        Read-only View
+                                    </div>
+                                </div>
+
+                                <div className="flex-1 overflow-auto p-4 font-mono text-sm leading-6 relative scrollbar-thin">
+                                    {CODE_LINES.map((line, idx) => {
+                                        const isActive = activeLine === idx
+                                        const varInfo = getLineVariables(idx)
+
+                                        return (
+                                            <div
+                                                key={idx}
+                                                className={`flex relative group transition-colors duration-100 ${
+                                                    isActive
+                                                        ? 'bg-[#264f78]/40'
+                                                        : 'hover:bg-[#2a2d2e]'
+                                                }`}
+                                            >
+                                                {/* 行號 */}
+                                                <span
+                                                    className={`w-8 text-right pr-4 select-none ${
+                                                        isActive
+                                                            ? 'text-slate-200 font-bold'
+                                                            : 'text-[#858585]'
+                                                    }`}
+                                                >
+                                                    {idx + 1}
+                                                </span>
+
+                                                {/* 程式碼內容 */}
+                                                <span
+                                                    className={`whitespace-pre flex-1 ${
+                                                        isActive
+                                                            ? 'text-slate-100'
+                                                            : 'text-[#d4d4d4]'
+                                                    }`}
+                                                >
+                                                    {line}
+                                                </span>
+
+                                                {/* 當前執行行指示器 */}
+                                                {isActive && (
+                                                    <div className="absolute left-0 w-1 h-full bg-blue-400"></div>
+                                                )}
+
+                                                {/* 變數數值氣泡 (Variable Badge) */}
+                                                {varInfo && (
+                                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 bg-blue-600 text-white text-xs px-2 py-0.5 rounded shadow-lg animate-in fade-in slide-in-from-left-2 duration-200 z-10 border border-blue-400 font-sans">
+                                                        {varInfo}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )
+                                    })}
+
+                                    {/* 底部補白 */}
+                                    <div className="h-20"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            const root = ReactDOM.createRoot(document.getElementById('root'))
+            root.render(<LogicDemo />)
+        </script>
+    </body>
+</html>
