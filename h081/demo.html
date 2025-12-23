@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C++ 貪婪演算法 - 股價獲利演示</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+TC:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+        }
+        
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .line-highlight {
+            background-color: #fef08a; /* yellow-200 */
+            border-left: 4px solid #eab308; /* yellow-500 */
+            transition: all 0.2s;
+        }
+
+        .array-cell {
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* Bouncy effect */
+        }
+
+        .active-cell {
+            transform: scale(1.25);
+            z-index: 10;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05), 0 0 0 4px rgba(250, 204, 21, 0.5);
+            border-color: #ca8a04 !important; /* Yellow-600 */
+            background-color: #fef9c3 !important; /* Yellow-100 */
+            color: #854d0e; /* Yellow-800 */
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800 flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <i data-lucide="trending-up" class="text-blue-600"></i>
+                <h1 class="text-xl font-bold text-slate-900">股價貪婪演算法演示 (Greedy Strategy)</h1>
+            </div>
+            <div class="text-sm text-slate-500 hidden sm:block">逐步執行 C++ 程式碼邏輯</div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl mx-auto w-full p-4 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left Column: Inputs, Controls & Visualization -->
+        <div class="lg:col-span-7 flex flex-col gap-4">
+            
+            <!-- Input Section (Moved to Left) -->
+            <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+                <h2 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                    <i data-lucide="settings" class="w-4 h-4"></i> 設定參數
+                </h2>
+                <div class="grid grid-cols-2 gap-4 mb-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">天數 (n)</label>
+                        <input type="number" id="inputN" value="6" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 code-font">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">價差 (D)</label>
+                        <input type="number" id="inputD" value="10" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 code-font">
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-xs font-medium text-slate-500 mb-1">股價列表 (以空白分隔)</label>
+                    <input type="text" id="inputTicks" value="30 20 45 38 10 20" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 code-font">
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="initSimulation()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex justify-center items-center gap-2">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i> 重置並載入
+                    </button>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-4 flex flex-wrap items-center gap-3">
+                <button id="btnPrev" onclick="step(-1)" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i data-lucide="chevron-left" class="inline w-4 h-4 mr-1"></i> 上一步
+                </button>
+                <button id="btnNext" onclick="step(1)" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    下一步 <i data-lucide="chevron-right" class="inline w-4 h-4 ml-1"></i>
+                </button>
+                <div class="w-px h-6 bg-slate-300 mx-2"></div>
+                <button id="btnPlay" onclick="togglePlay()" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium transition-colors flex items-center gap-1">
+                    <i id="iconPlay" data-lucide="play" class="w-4 h-4"></i> <span id="textPlay">自動播放</span>
+                </button>
+                <div class="flex-grow text-right text-sm text-slate-500 code-font">
+                    Step: <span id="stepCounter" class="font-bold text-slate-900">0</span> / <span id="totalSteps">0</span>
+                </div>
+            </div>
+
+            <!-- Visualization Area -->
+            <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-6 flex-grow flex flex-col">
+                
+                <!-- Expanded Status Grid -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 pb-4 border-b border-slate-100">
+                    
+                    <!-- Row 1: Basic Loop State -->
+                    <div class="bg-slate-50 p-2 rounded border border-slate-200 flex flex-col items-center justify-center">
+                        <span class="text-[10px] text-slate-400 font-bold uppercase">Index (i)</span>
+                        <span id="var-i" class="text-lg font-bold text-slate-800 code-font">-</span>
+                    </div>
+                    <div class="bg-slate-50 p-2 rounded border border-slate-200 flex flex-col items-center justify-center">
+                        <span class="text-[10px] text-slate-400 font-bold uppercase">Diff (D)</span>
+                        <span id="var-d" class="text-lg font-bold text-slate-800 code-font">-</span>
+                    </div>
+                    <div class="bg-purple-50 p-2 rounded border border-purple-200 flex flex-col items-center justify-center">
+                        <span class="text-[10px] text-purple-400 font-bold uppercase">Holding</span>
+                        <span id="var-holding" class="text-lg font-bold text-purple-700 code-font">True</span>
+                    </div>
+                     <div class="bg-green-50 p-2 rounded border border-green-200 flex flex-col items-center justify-center">
+                        <span class="text-[10px] text-green-600 font-bold uppercase">Total Profit</span>
+                        <span id="var-profit" class="text-lg font-bold text-green-700 code-font">0</span>
+                    </div>
+
+                    <!-- Row 2: Price Logic -->
+                    <div class="bg-blue-50 p-2 rounded border border-blue-200 flex flex-col items-center justify-center relative group">
+                        <div class="absolute top-0 right-1 text-[8px] text-blue-300">Cost</div>
+                        <span class="text-[10px] text-blue-500 font-bold uppercase">Buy Price</span>
+                        <span id="var-buy" class="text-lg font-bold text-blue-700 code-font">-</span>
+                    </div>
+                    <div class="bg-blue-50 p-2 rounded border border-blue-200 flex flex-col items-center justify-center relative">
+                        <div class="absolute top-0 right-1 text-[8px] text-blue-300">Sell >=</div>
+                        <span class="text-[10px] text-blue-500 font-bold uppercase">Expect Price</span>
+                        <div class="text-[9px] text-blue-400 leading-none mb-1">(Buy + D)</div>
+                        <span id="var-expect" class="text-lg font-bold text-blue-700 code-font">-</span>
+                    </div>
+                    
+                    <div class="bg-orange-50 p-2 rounded border border-orange-200 flex flex-col items-center justify-center relative">
+                        <div class="absolute top-0 right-1 text-[8px] text-orange-300">Record</div>
+                        <span class="text-[10px] text-orange-500 font-bold uppercase">Last Sold</span>
+                        <span id="var-sold" class="text-lg font-bold text-orange-700 code-font">-</span>
+                    </div>
+                     <div class="bg-orange-50 p-2 rounded border border-orange-200 flex flex-col items-center justify-center relative">
+                        <div class="absolute top-0 right-1 text-[8px] text-orange-300">Buy <=</div>
+                        <span class="text-[10px] text-orange-500 font-bold uppercase">Re-Buy Limit</span>
+                        <div class="text-[9px] text-orange-400 leading-none mb-1">(Sold - D)</div>
+                        <span id="var-rebuy" class="text-lg font-bold text-orange-700 code-font">-</span>
+                    </div>
+                </div>
+
+                <!-- Array Visualization -->
+                <div class="mb-2">
+                    <h3 class="text-sm font-bold text-slate-700 mb-2">Ticks (股價陣列)</h3>
+                    <div id="arrayContainer" class="flex flex-wrap gap-3 p-2">
+                        <!-- Array items will be injected here -->
+                    </div>
+                </div>
+
+                <!-- Log / Explanation -->
+                <div class="mt-auto pt-6">
+                    <div class="bg-slate-800 text-slate-200 rounded-md p-4 code-font text-sm h-32 overflow-y-auto shadow-inner" id="logContainer">
+                        <div class="text-slate-400">> 等待執行...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Code Display -->
+        <div class="lg:col-span-5 flex flex-col gap-4">
+            <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex-grow flex flex-col h-full">
+                <div class="bg-slate-100 px-4 py-2 border-b border-slate-200 flex justify-between items-center">
+                    <span class="text-xs font-bold text-slate-600">Source Code (C++)</span>
+                </div>
+                <div class="overflow-auto flex-grow p-2 bg-white text-sm code-font relative h-[calc(100vh-200px)]" id="codeContainer">
+                    <!-- Lines will be marked with IDs for highlighting -->
+                    <div id="line-1" class="px-2 py-0.5 text-slate-400">// main start</div>
+                    <div id="line-2" class="px-2 py-0.5"><span class="text-purple-600">int</span> n, D;</div>
+                    <div id="line-3" class="px-2 py-0.5">cin >> n >> D;</div>
+                    <div id="line-4" class="px-2 py-0.5 text-slate-400">// ... array init ...</div>
+                    <div id="line-5" class="px-2 py-0.5"><span class="text-purple-600">int</span> profit = <span class="text-orange-600">0</span>;</div>
+                    <div id="line-6" class="px-2 py-0.5"><span class="text-purple-600">bool</span> holding = <span class="text-blue-600">true</span>;</div>
+                    <div id="line-7" class="px-2 py-0.5"><span class="text-purple-600">int</span> buy_price = ticks[<span class="text-orange-600">0</span>];</div>
+                    <div id="line-8" class="px-2 py-0.5"><span class="text-purple-600">int</span> expect_price = buy_price + D;</div>
+                    <div id="line-9" class="px-2 py-0.5"><span class="text-purple-600">int</span> last_sold = <span class="text-orange-600">0</span>;</div>
+                    <div id="line-10" class="px-2 py-0.5 text-slate-300 my-1 border-t border-slate-100"></div>
+                    <div id="line-11" class="px-2 py-0.5"><span class="text-purple-600">for</span> (<span class="text-purple-600">int</span> i = <span class="text-orange-600">1</span>; i < n; i++) {</div>
+                    <div id="line-12" class="px-2 py-0.5 pl-6"><span class="text-purple-600">if</span> (holding) {</div>
+                    <div id="line-13" class="px-2 py-0.5 pl-10"><span class="text-purple-600">if</span> (ticks[i] >= expect_price) { <span class="text-green-600">// 賣出</span></div>
+                    <div id="line-14" class="px-2 py-0.5 pl-14">profit += (ticks[i] - buy_price);</div>
+                    <div id="line-15" class="px-2 py-0.5 pl-14">last_sold = ticks[i];</div>
+                    <div id="line-16" class="px-2 py-0.5 pl-14">holding = <span class="text-blue-600">false</span>;</div>
+                    <div id="line-17" class="px-2 py-0.5 pl-10">}</div>
+                    <div id="line-18" class="px-2 py-0.5 pl-6">} <span class="text-purple-600">else</span> {</div>
+                    <div id="line-19" class="px-2 py-0.5 pl-10"><span class="text-purple-600">if</span> (ticks[i] <= (last_sold - D)) { <span class="text-green-600">// 買進</span></div>
+                    <div id="line-20" class="px-2 py-0.5 pl-14">buy_price = ticks[i];</div>
+                    <div id="line-21" class="px-2 py-0.5 pl-14">expect_price = buy_price + D;</div>
+                    <div id="line-22" class="px-2 py-0.5 pl-14">holding = <span class="text-blue-600">true</span>;</div>
+                    <div id="line-23" class="px-2 py-0.5 pl-10">}</div>
+                    <div id="line-24" class="px-2 py-0.5 pl-6">}</div>
+                    <div id="line-25" class="px-2 py-0.5">}</div>
+                    <div id="line-26" class="px-2 py-0.5 text-slate-300 my-1 border-t border-slate-100"></div>
+                    <div id="line-27" class="px-2 py-0.5">cout << profit << endl;</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+
+        // 模擬狀態管理
+        let simulationSteps = [];
+        let currentStepIndex = 0;
+        let isPlaying = false;
+        let playInterval = null;
+        let inputs = {};
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            initSimulation();
+        });
+
+        function parseInputs() {
+            const n = parseInt(document.getElementById('inputN').value) || 0;
+            const D = parseInt(document.getElementById('inputD').value) || 0;
+            const tickStr = document.getElementById('inputTicks').value;
+            const ticks = tickStr.trim().split(/\s+/).map(Number).filter(n => !isNaN(n));
+            
+            // 簡單驗證
+            if (ticks.length !== n) {
+                // 如果長度不對，嘗試適應
+                if (ticks.length < n) {
+                    // 補0
+                    while(ticks.length < n) ticks.push(0);
+                } else {
+                    // 截斷
+                    ticks.length = n;
+                }
+                document.getElementById('inputTicks').value = ticks.join(' ');
+            }
+            
+            return { n, D, ticks };
+        }
+
+        function initSimulation() {
+            stopPlay();
+            inputs = parseInputs();
+            simulationSteps = generateSteps(inputs.n, inputs.D, inputs.ticks);
+            currentStepIndex = 0;
+            
+            // Render initial state
+            renderArray(inputs.ticks);
+            updateUI(0);
+        }
+
+        // 核心邏輯：預先產生所有步驟
+        function generateSteps(n, D, ticks) {
+            let steps = [];
+            
+            // Helper to push step
+            const pushStep = (lineId, log, stateOverride = {}) => {
+                // Current state copy
+                const lastState = steps.length > 0 ? steps[steps.length - 1].state : {
+                    i: '-', profit: 0, holding: false, buy_price: '-', expect_price: '-', last_sold: 0,
+                    highlightIndex: -1, done: false
+                };
+                
+                const newState = { ...lastState, ...stateOverride };
+                steps.push({
+                    lineId,
+                    log,
+                    state: newState
+                });
+            };
+
+            // Step 0: Start
+            pushStep('line-2', '程式開始，宣告變數 n, D', { i: '-', profit: 0, holding: false, buy_price: '-', expect_price: '-', last_sold: 0, highlightIndex: -1 });
+            pushStep('line-3', `讀入 n=${n}, D=${D}`, {});
+            
+            if (n <= 0) {
+                pushStep('line-27', 'n <= 0，輸出 0', { done: true });
+                return steps;
+            }
+
+            // Init vars
+            let profit = 0;
+            let holding = true;
+            let buy_price = ticks[0];
+            let expect_price = buy_price + D;
+            let last_sold = 0;
+
+            pushStep('line-5', `初始化 profit = 0`, { profit: 0 });
+            pushStep('line-6', `初始化 holding = true (第一天預設買入)`, { holding: true });
+            pushStep('line-7', `第一天買入價格 buy_price = ${ticks[0]}`, { buy_price: ticks[0], highlightIndex: 0 });
+            pushStep('line-8', `設定預期賣出價格 expect_price = ${buy_price} + ${D} = ${expect_price}`, { expect_price: expect_price });
+            pushStep('line-9', `初始化 last_sold = 0`, { last_sold: 0 });
+
+            // Loop
+            for (let i = 1; i < n; i++) {
+                pushStep('line-11', `迴圈開始，i = ${i}`, { i: i, highlightIndex: i });
+                
+                if (holding) {
+                    pushStep('line-12', `holding 為 true，檢查是否賣出`, { i: i });
+                    
+                    if (ticks[i] >= expect_price) {
+                        pushStep('line-13', `ticks[${i}] (${ticks[i]}) >= expect_price (${expect_price})，條件成立，賣出！`, { i: i });
+                        
+                        let gain = ticks[i] - buy_price;
+                        profit += gain;
+                        pushStep('line-14', `更新 profit += (${ticks[i]} - ${buy_price})。目前獲利: ${profit}`, { profit: profit });
+                        
+                        last_sold = ticks[i];
+                        pushStep('line-15', `記錄 last_sold = ${last_sold}`, { last_sold: last_sold });
+                        
+                        holding = false;
+                        pushStep('line-16', `設定 holding = false`, { holding: false });
+                    } else {
+                        pushStep('line-13', `ticks[${i}] (${ticks[i]}) < expect_price (${expect_price})，不賣出`, { i: i });
+                    }
+                } else {
+                    pushStep('line-18', `holding 為 false，進入 else 分支`, { i: i });
+                    
+                    if (ticks[i] <= (last_sold - D)) {
+                        let targetBuy = last_sold - D;
+                        pushStep('line-19', `ticks[${i}] (${ticks[i]}) <= last_sold - D (${targetBuy})，條件成立，買入！`, { i: i });
+                        
+                        buy_price = ticks[i];
+                        pushStep('line-20', `更新 buy_price = ${buy_price}`, { buy_price: buy_price });
+                        
+                        expect_price = buy_price + D;
+                        pushStep('line-21', `更新 expect_price = ${expect_price}`, { expect_price: expect_price });
+                        
+                        holding = true;
+                        pushStep('line-22', `設定 holding = true`, { holding: true });
+                    } else {
+                        let targetBuy = last_sold - D;
+                        pushStep('line-19', `ticks[${i}] (${ticks[i]}) > last_sold - D (${targetBuy})，價格不夠低，不買`, { i: i });
+                    }
+                }
+            }
+
+            pushStep('line-25', '迴圈結束', { i: n, highlightIndex: -1 });
+            pushStep('line-27', `輸出最終獲利: ${profit}`, { profit: profit, done: true });
+
+            return steps;
+        }
+
+        // 渲染陣列
+        function renderArray(ticks) {
+            const container = document.getElementById('arrayContainer');
+            container.innerHTML = '';
+            ticks.forEach((val, idx) => {
+                const div = document.createElement('div');
+                div.id = `cell-${idx}`;
+                div.className = 'array-cell w-14 h-16 flex flex-col justify-between items-center bg-white border-2 border-slate-200 rounded-lg p-2 shadow-sm cursor-default';
+                
+                const idxSpan = document.createElement('span');
+                idxSpan.className = 'text-[10px] text-slate-400 font-mono';
+                idxSpan.innerText = idx;
+
+                const valSpan = document.createElement('span');
+                valSpan.className = 'text-xl font-bold code-font text-slate-700';
+                valSpan.innerText = val;
+
+                div.appendChild(idxSpan);
+                div.appendChild(valSpan);
+                container.appendChild(div);
+            });
+        }
+
+        // 更新 UI
+        function updateUI(stepIndex) {
+            const step = simulationSteps[stepIndex];
+            if (!step) return;
+
+            // Highlight Code Line
+            document.querySelectorAll('.line-highlight').forEach(el => el.classList.remove('line-highlight'));
+            const lineEl = document.getElementById(step.lineId);
+            const container = document.getElementById('codeContainer');
+
+            if (lineEl && container) {
+                lineEl.classList.add('line-highlight');
+                
+                // 改進的滾動邏輯
+                const topPos = lineEl.offsetTop - (container.clientHeight / 2) + (lineEl.clientHeight / 2);
+                container.scrollTo({
+                    top: topPos,
+                    behavior: 'smooth'
+                });
+            }
+
+            // Update Vars
+            const s = step.state;
+            document.getElementById('var-i').innerText = s.i;
+            document.getElementById('var-d').innerText = inputs.D; // Input D is constant
+            document.getElementById('var-profit').innerText = s.profit;
+            
+            const holdingEl = document.getElementById('var-holding');
+            holdingEl.innerText = s.holding ? "True" : "False";
+            holdingEl.className = `text-lg font-bold code-font ${s.holding ? 'text-purple-700' : 'text-slate-400'}`;
+
+            document.getElementById('var-buy').innerText = s.buy_price;
+            document.getElementById('var-expect').innerText = s.expect_price;
+            document.getElementById('var-sold').innerText = s.last_sold;
+            
+            // Calculate and show Re-Buy limit (last_sold - D)
+            // Note: If last_sold is 0 (initial), this will be negative, which is correct for the logic.
+            const reBuyVal = (typeof s.last_sold === 'number') ? (s.last_sold - inputs.D) : '-';
+            document.getElementById('var-rebuy').innerText = reBuyVal;
+
+            // Highlight Array Cell
+            document.querySelectorAll('.active-cell').forEach(el => el.classList.remove('active-cell'));
+            if (s.highlightIndex >= 0 && s.highlightIndex < inputs.ticks.length) {
+                const cell = document.getElementById(`cell-${s.highlightIndex}`);
+                if (cell) {
+                    cell.classList.add('active-cell');
+                    // Scroll cell into view if needed (for small screens)
+                    cell.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }
+            }
+
+            // Update Log
+            const logContainer = document.getElementById('logContainer');
+            const logEntry = document.createElement('div');
+            logEntry.className = 'mb-1 font-mono text-xs border-l-2 border-blue-500 pl-2';
+            logEntry.innerHTML = `<span class="opacity-50">[Step ${stepIndex+1}]</span> ${step.log}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+
+            // Step Counters
+            document.getElementById('stepCounter').innerText = stepIndex + 1;
+            document.getElementById('totalSteps').innerText = simulationSteps.length;
+
+            // Buttons State
+            document.getElementById('btnPrev').disabled = stepIndex === 0;
+            document.getElementById('btnNext').disabled = stepIndex === simulationSteps.length - 1;
+        }
+
+        function step(delta) {
+            const newIndex = currentStepIndex + delta;
+            if (newIndex >= 0 && newIndex < simulationSteps.length) {
+                currentStepIndex = newIndex;
+                if (delta < 0) {
+                     // Backwards logic if needed
+                }
+                updateUI(currentStepIndex);
+            } else if (newIndex >= simulationSteps.length) {
+                stopPlay();
+            }
+        }
+
+        function togglePlay() {
+            if (isPlaying) {
+                stopPlay();
+            } else {
+                startPlay();
+            }
+        }
+
+        function startPlay() {
+            if (currentStepIndex >= simulationSteps.length - 1) {
+                currentStepIndex = -1; // Restart
+                document.getElementById('logContainer').innerHTML = '';
+            }
+            
+            isPlaying = true;
+            document.getElementById('textPlay').innerText = "暫停";
+            document.getElementById('iconPlay').setAttribute('data-lucide', 'pause');
+            lucide.createIcons();
+            
+            playInterval = setInterval(() => {
+                step(1);
+            }, 800); // 800ms per step
+        }
+
+        function stopPlay() {
+            isPlaying = false;
+            clearInterval(playInterval);
+            document.getElementById('textPlay').innerText = "自動播放";
+            document.getElementById('iconPlay').setAttribute('data-lucide', 'play');
+            lucide.createIcons();
+        }
+
+    </script>
+</body>
+</html>
