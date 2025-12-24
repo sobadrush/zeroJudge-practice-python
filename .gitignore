@@ -52,6 +52,9 @@ Temporary Items
 !**/solution_*.h
 !**/solution_*.hpp
 
+# Extensionless binaries named exactly "solution"
+**/solution
+
 **/*_solve
 !**/*_solve.py
 !**/*_solve.cpp
